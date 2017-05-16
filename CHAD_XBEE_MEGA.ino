@@ -12,7 +12,7 @@
 #include "utility/Adafruit_MS_PWMServoDriver.h"
 #include <SPI.h>
 #include <SD.h>
-File myFile;
+
 
 Adafruit_MotorShield AFMStop(0x60); // Default address, no jumpers
 const uint8_t led = 13;
@@ -49,10 +49,10 @@ bool blinkState = false;      //Used to verify program active
 void setup()
 {
   pinMode(led, OUTPUT);
-  pinMode(5, OUTPUT);
+  pinMode(5, OUTPUT);           // set-up for RESET pin
   AFMStop.begin();                // Start the top shield
-  Serial1.begin(38400);
-  Serial.begin(9600);
+  Serial1.begin(38400);         // Ard-to-Ard serial rate
+  Serial.begin(9600);           // XBee serial rate
   // AHRS uses 38400 baud
   stepper.setMaxSpeed(5000.0);    //steps/sec, high value is limited by time
                                   //taken to call run()
@@ -62,14 +62,16 @@ void setup()
   startingPosition = (Serial1.parseFloat() * DegToSteps);
 
   while (!Serial){;}      //  wait for serial port to connect
-  
+
+  // initialize SD
   if (!SD.begin(4)) {
-    Serial.println("initialization failed!");
+    Serial1.println("initialization failed!");
     return;
   }
 
  
   Serial1.println("Setup complete.");
+  
 
 }
 
@@ -85,11 +87,15 @@ void loop()
       rotSpeed = rotSpeed_str.toInt();
       gammaPos = -Serial1.parseFloat(); 
 
+      // Record position (magnetic field)
+      File myFile = SD.open("test.txt", FILE_WRITE);
 
-      myFile = SD.open("test.txt");
+       if(myFile){
       myFile.print("gammaPos: "); 
       myFile.println(gammaPos);
       myFile.close();
+      }
+      
 
       gammaPosSteps = gammaPos * DegToSteps;  //Convert to steps
       curPos = stepper.currentPosition() - startingPosition ;  //Get current position
@@ -131,7 +137,7 @@ void serialBFlush(){
     char t = Serial.read();
   }
 }
-void xBeeCommand() {
+void xBeeCommand(){
   if (Serial.available()) {
 
     //  Grab transmission and parse command  //
@@ -152,7 +158,7 @@ void xBeeCommand() {
 
      if (id == "CH") {
       
-     Serial.println("CH\n");
+   //  Serial.println("CH\n");
       Serial1.println("Neato Bandito");
       if (command == "ZE") {
         int mov = stepper.currentPosition()%200;
@@ -175,8 +181,8 @@ void xBeeCommand() {
       } 
        if (command == "RS") {
     sendToXbee("RS RECEIVED");
-    digitalWrite(5, HIGH);   // turn the LED on (HIGH is the voltage level)
-    delay(500);              // wait for a second
+    digitalWrite(5, HIGH);   // turn the RESET on (HIGH is the voltage level)
+    delay(500);              // wait for a 0.5 second
     digitalWrite(5, LOW);
       } 
   if (command == "HW") {
@@ -194,8 +200,9 @@ void xBeeCommand() {
     
     }
 }
-
 }
+
+
 void sendToXbee(String msg){
   if(msg != "LED\n"){
     Serial.println("CH;"+msg + "!");
