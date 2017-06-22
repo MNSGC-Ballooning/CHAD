@@ -226,7 +226,8 @@ void setup() {
   }
 
   Ndata = 0;
-
+  pinMode(6, OUTPUT);
+  pinMode(7, INPUT);
 }
 
 
@@ -236,6 +237,16 @@ void setup() {
 
 void loop() {
 
+  //Restart Arduino UNO/MEGA
+  if(digitalRead(7) == HIGH){
+     delay(3000);         //wait for 3 seconds
+     digitalWrite(6,HIGH); 
+     delay(500);          //wait for a 1 second
+     digitalWrite(6, LOW); 
+  }
+  
+  
+  
   // if programming failed, don't try to do anything
   if (!dmpReady) return;
 
