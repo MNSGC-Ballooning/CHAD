@@ -57,6 +57,7 @@ bool blinkState = false;      //Used to verify program active
 
 String lastcommand = "" ; //Used to keep track of commands, to avoid repeats
 unsigned long commandtime = 0;
+unsigned long timing = 0;
 
 void setup()
 {
@@ -118,11 +119,13 @@ void loop()
 
       gammaPosSteps = gammaPos * DegToSteps;  //Convert to steps
       curPos = stepper.currentPosition() - startingPosition;  //Get current position
-      amtMove = -gammaPosSteps - (curPos % 200) + rotSpeed*rotSpeedScale - offset -Spins; //Calculate ammount moved
+      amtMove = -gammaPosSteps - (curPos % 200) + rotSpeed*rotSpeedScale + offset -Spins; //Calculate ammount moved
 
-      //if(spin){
-      //  offset -=70;
-      //}
+      if(spin){
+        stepper.moveTo(stepper.currentPosition() + 200);
+        stepper.runToPosition();
+        spin = false;
+      }
                         
       //if the amount to move is less than -180deg, that is it will rotate more than half way
       if (amtMove < -100) { amtMove+=200; }
@@ -141,10 +144,14 @@ void loop()
      
 
       stepper.run();          //Move
-    }
+    } 
   xBeeCommand();                              //  respond to XBee commands if any
   stepper.run();  //Move
   updateGPS();
+  
+  timing = millis();
+  timing = timing % 600000;
+  
   if( millis() -commandtime > 10000)
   {
     sendToXbee("error,RESET");
@@ -155,15 +162,18 @@ void loop()
                             //Statement will repeat until serial connects
   } 
   
-  unsigned long timing = millis();
+
 
   //Every minute, the payload should spin 360 degrees
-  if((timing % 60000  >=0 && timing % 60000 <=5) || Spins >0){
-    Spins += 5;
-    if(Spins == 200){
-      Spins =0;
+  if(timing >=0 && timing <=5){
+    stepper.moveTo(stepper.currentPosition() - 200);
+      stepper.runToPosition();
     }
-  }
+  
+
+    
+     
+      
   
 }
 
@@ -174,7 +184,6 @@ void serialFlush()
     char t = Serial1.read();
   }
 }
-
 void serialBFlush(){
   while(Serial.available() > 0) {
     char t = Serial.read();
@@ -223,7 +232,6 @@ void xBeeCommand(){
   }
   if(command == "SP"){
     sendToXbee("SP RECIVED");
-    offset -= 70;
     spin = true;
   }
   if (command == "TL") {
