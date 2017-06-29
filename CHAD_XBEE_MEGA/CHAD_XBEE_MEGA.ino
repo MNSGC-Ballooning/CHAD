@@ -59,6 +59,13 @@ String lastcommand = "" ; //Used to keep track of commands, to avoid repeats
 unsigned long commandtime = 0;
 unsigned long timing = 0;
 
+// Shadow Position
+float chadLat;
+float chadLong;
+float EclipLat;
+float EclipLong;
+const float pi = 3.1415926 
+
 void setup()
 {
   pinMode(led, OUTPUT);
@@ -291,6 +298,9 @@ void updateGPS(){
         data += (String(GPS.altitude * 3.28048) + ",");    //convert meters to feet for datalogging
         data += (String(GPS.month) + "/" + String(GPS.day) + "/" + String(GPS.year) + ",");
         data += (String(GPS.hour) + ":" + String(GPS.minute) + ":" + String(GPS.seconds) + ",");
+        chadLat = GPS.latitudeDegrees * (pi/180);
+        chadLong = GPS.longitudeDegrees * (pi/180);
+        
       }
       else
         data += (flightTimeStr() + ",No fix");
