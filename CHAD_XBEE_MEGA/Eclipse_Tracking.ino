@@ -4,11 +4,15 @@ float EclipseBearing(){
   float y;
   UpdateEclipsePos();
   x = sin(eclipLong-GPS.latitueDegrees) * cos(eclipLat);
-  y = cos(GPS.latitueDegrees()) * sin(eclipLat)-sin(GPS.latitueDegrees) * cos(eclipLat) * cos(GPS.longitudeDegrees);
+  y = cos(GPS.latitueDegrees*(pi/180))* sin(eclipLat)-sin(GPS.latitueDegrees*(pi/180)) * cos(eclipLat) * cos(GPS.longitudeDegrees*(pi/180));
   bearing = atan2(y, x);
   return bearing * (180/pi);
 }
-
+class eclipsLoc{
+  float Lat;
+  float Long;
+  String Time;
+}
 void UpdateEclipsePos(){
   string currentTime = (String(GPS.hour) + ":" + String(GPS.minute));
   if (currentTime = "17:16"){
