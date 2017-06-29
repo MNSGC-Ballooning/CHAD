@@ -4,7 +4,7 @@ EclipseBearing(){
   float y;
   UpdateEclipsePos();
   x = sin(eclipLong-chadLong) * cos(eclipLat);
-  y = cos(chadLat) * sin(eclipLat)-sin(chadLat) * cos(eclipLat) * cos(chadLong);
+  y = cos(chadLat) * sin(eclipLat)-sin(chadLat) * cos(eclipLat) * cos(eclipLong-chadLong);
   bearing = atan2(y, x);
   return bearing * (180/pi);
 }
