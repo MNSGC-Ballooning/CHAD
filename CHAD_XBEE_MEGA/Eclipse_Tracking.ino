@@ -3,10 +3,14 @@ float EclipseBearing(){
   float x;
   float y;
   UpdateEclipsePos();
-  x = sin((current->Long*(pi/180))-(GPS.latitudeDegrees*(pi/180))) * cos((current->Lat)*pi/180);
-  y = cos(GPS.latitudeDegrees*(pi/180))* sin(current->Lat*(pi/180))-sin(GPS.latitudeDegrees*(pi/180)) * cos(current->Lat*(pi/180)) * cos(GPS.longitudeDegrees*(pi/180));
-  bearing = atan2(y, x);
-  return bearing * (180/pi);
+  y = sin((current->Long*(pi/180))-(GPS.longitudeDegrees*(pi/180))) * cos((current->Lat)*pi/180);
+  x = cos(GPS.latitudeDegrees*(pi/180))* sin(current->Lat*(pi/180))-sin(GPS.latitudeDegrees*(pi/180)) * cos(current->Lat*(pi/180)) * cos((current->Long*(pi/180))-(GPS.longitudeDegrees*(pi/180)));
+  bearing = atan2(y, x)*(180/pi);
+    //make sure that the bearing is always positive
+  if(bearing<0){
+    bearing +=360;
+  }
+  return bearing;
 }
 eclipseLoc::eclipseLoc(float lat, float longi, String tim){
   Lat = lat;
