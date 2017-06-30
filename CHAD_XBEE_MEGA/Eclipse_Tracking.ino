@@ -1,15 +1,19 @@
-EclipseBearing(){
+float EclipseBearing(){
   float bearing;
   float x;
   float y;
-  UpdateEclipsePos();
-  x = sin(eclipLong-chadLong) * cos(eclipLat);
-  y = cos(chadLat) * sin(eclipLat)-sin(chadLat) * cos(eclipLat) * cos(eclipLong-chadLong);
+  x = sin(eclipseLoc.Long-(GPS.LongitudeDegrees * pi/180)) * cos(eclipseLoc.Lat);
+  y = cos(GPS.latitudeDegrees*pi/180) * sin(eclipseLoc.Lat)-sin(GPS.latitudeDegrees*pi/180) * cos(eclipseLoc.Lat) * cos(eclipseLoc.Long-(GPS.longitudeDegrees*pi/180));
   bearing = atan2(y, x);
   return bearing * (180/pi);
 }
-
-UpdateEclipsePos(){
+eclipseLoc::eclipseLoc(float lat, float longi, String tim){
+  Lat = lat;
+  Long = longi;
+  Time = tim;
+}
+/*
+void UpdateEclipsePos(){
   string currentTime = (String(GPS.hour) + ":" + String(GPS.minute));
   if (currentTime = "17:16"){
     eclipLat = 44.87 * (pi/180);
@@ -200,4 +204,4 @@ UpdateEclipsePos(){
     eclipLong = 79.3516666 * (pi/180);
   }
 }
-
+*/
