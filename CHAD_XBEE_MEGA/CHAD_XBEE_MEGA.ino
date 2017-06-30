@@ -43,6 +43,7 @@ eclipseLoc shadowLoc[]= {{44.87,124.84,"17:16"}, {44.81,123.203333,"17:18"}, {44
 {35.52,84.475,"18:34"},{35.1666666,83.7333333,"18:36"},{34.81,82.9966666,"18:38"},{34.4483333,82.2633333,"18:40"},
 {34.0833333,81.5333333,"18:42"},{33.715,80.805,"18:44"},{33.34,80.0783333,"18:46"},{32.9633333,79.3516666,"18:48"}};
 
+eclipseLoc* current = &shadowLoc[0];
 
 Adafruit_MotorShield AFMStop(0x60); // Default address, no jumpers
 const uint8_t led = 13;
@@ -88,8 +89,10 @@ void setup()
 {
   //settting up eclipse location
   for(int i =0;i<46;i++){
-  shadowLoc[i].Next = &shadowLoc[i+1];
+    shadowLoc[i].Next = &shadowLoc[i+1];
   }
+  shadowLoc[46].Next = NULL;
+  
   pinMode(led, OUTPUT);
   pinMode(5, OUTPUT);           // set-up for RESET pin
   pinMode(6, OUTPUT);           // set-up for MEGA RESET pin
