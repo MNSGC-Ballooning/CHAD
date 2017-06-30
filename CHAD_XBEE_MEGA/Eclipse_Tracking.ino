@@ -3,8 +3,8 @@ float EclipseBearing(){
   float x;
   float y;
   UpdateEclipsePos();
-  x = sin(current->Long-GPS.latitudeDegrees) * cos(current->Lat);
-  y = cos(GPS.latitudeDegrees*(pi/180))* sin(current->Lat)-sin(GPS.latitudeDegrees*(pi/180)) * cos(current->Lat) * cos(GPS.longitudeDegrees*(pi/180));
+  x = sin((current->Long*(pi/180))-(GPS.latitudeDegrees*(pi/180))) * cos((current->Lat)*pi/180);
+  y = cos(GPS.latitudeDegrees*(pi/180))* sin(current->Lat*(pi/180))-sin(GPS.latitudeDegrees*(pi/180)) * cos(current->Lat*(pi/180)) * cos(GPS.longitudeDegrees*(pi/180));
   bearing = atan2(y, x);
   return bearing * (180/pi);
 }
