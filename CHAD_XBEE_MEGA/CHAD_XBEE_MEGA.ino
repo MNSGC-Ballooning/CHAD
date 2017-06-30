@@ -28,7 +28,6 @@ class eclipseLoc{
   String Time;
   eclipseLoc* Next;
   eclipseLoc(float lat, float longi, String tim);
-  void UpdateLocation;
 };
 
 eclipseLoc shadowLoc[]= {{44.87,124.84,"17:16"}, {44.81,123.203333,"17:18"}, {44.7333333,121.6316666,"17:20"},

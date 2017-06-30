@@ -12,12 +12,7 @@ eclipseLoc::eclipseLoc(float lat, float longi, String tim){
   Long = longi;
   Time = tim;
 }
-void eclipseLoc::UpdateLoctation(){
-  for(int i = 0; i < 47; i++){
-    Next = ShadLoc[i];
-  }
-  
-}
+
 /*
 void UpdateEclipsePos(){
   string currentTime = (String(GPS.hour) + ":" + String(GPS.minute));
