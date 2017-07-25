@@ -1,4 +1,4 @@
-float EclipseBearing(){
+  float EclipseBearing(){
   float bearing;
   float x;
   float y;

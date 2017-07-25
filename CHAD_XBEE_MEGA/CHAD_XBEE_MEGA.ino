@@ -15,8 +15,12 @@
 #include <Adafruit_GPS.h>
 #include <math.h>
 Adafruit_GPS GPS(&Serial2); //Constructor for GPS object
+#include <Relay_XBee.h>
 
-//File compassfile;
+XBee xbee= XBee(&Serial, "CH");
+
+Adafruit_GPS GPS(&Serial2); //Constructor for GPS object
+File compassfile;
 File gpsfile;
 File Xbeelog;
 unsigned long flightStart = 0;
@@ -72,7 +76,6 @@ const float DegToSteps = 0.555556;  //Degree to Motor steps conversion
                                      //Found by (#steps/360deg)
 int startingPosition;
 int offset = 0;
-int Spins =0;             //Rotation tests
 bool spin = false;        //Rotation tests
 long curPos;
 int amtMove;                  //Number of steps motor should move
@@ -81,7 +84,8 @@ bool blinkState = false;      //Used to verify program active
 
 String lastcommand = "" ; //Used to keep track of commands, to avoid repeats
 unsigned long commandtime = 0;
-unsigned long timing = 0;
+unsigned long timer = 0;
+unsigned long turner = 0;
 
 const float pi = 3.1415926;
 
@@ -100,7 +104,11 @@ void setup()
   AFMStop.begin();                // Start the top shield
 
   Serial1.begin(38400);         // Ard-to-Ard serial rate
-  Serial.begin(9600);           // XBee serial rate
+//
+// NEW XBEE STUFF
+//
+  xbee.begin(9600);
+  //Serial.begin(9600);           // XBee serial rate
   // AHRS uses 38400 baud
 
 //Set up GPS stuff
@@ -134,24 +142,28 @@ void loop()
       // Read serial data from AHRS
       rotSpeed_str = Serial1.readStringUntil(',');
       commandtime = millis();
-      
+      Serial.println(commandtime);
      
       rotSpeed = rotSpeed_str.toInt();
       gammaPos = -Serial1.parseFloat(); 
 
-      // Record position (magnetic field)
-     // compassfile = SD.open("test.txt", FILE_WRITE);
+     
+      if(millis() - timer > 10000){
+        compassfile = SD.open("test.txt", FILE_WRITE);
 
-       //if(compassfile){
-      //compassfile.print("gammaPos: "); 
-      //compassfile.println(gammaPos);
-      //compassfile.close();
-      //}
-      
-
+       if(compassfile){
+         compassfile.print(flightTimeStr());
+        compassfile.print("rotspeed: "); 
+        compassfile.print(rotSpeed_str); 
+        compassfile.print("  gammaPos: "); 
+        compassfile.println(gammaPos);
+        compassfile.close();
+      }
+      timer = millis();}
+       
       gammaPosSteps = gammaPos * DegToSteps;  //Convert to steps
       curPos = stepper.currentPosition() - startingPosition;  //Get current position
-      amtMove = -gammaPosSteps - (curPos % 200) + rotSpeed*rotSpeedScale + offset -Spins; //Calculate ammount moved
+      amtMove = -gammaPosSteps - (curPos % 200) + rotSpeed*rotSpeedScale;// + offset; //Calculate ammount moved
 
       if(spin){
         stepper.moveTo(stepper.currentPosition() + 200);
@@ -177,16 +189,31 @@ void loop()
 
       stepper.run();          //Move
     } 
+
+
+
+   
+
+  //Every minute, the payload should spin 360 degrees
+  if(millis() - turner > 600000){
+    stepper.moveTo(stepper.currentPosition() - 200);
+      stepper.runToPosition();
+      turner = millis();
+    }
+
+  
   xBeeCommand();                              //  respond to XBee commands if any
   stepper.run();  //Move
+
+
   updateGPS();
+ 
   
-  timing = millis();
-  timing = timing % 600000;
+  
   
   if( millis() -commandtime > 10000)
   {
-    sendToXbee("error,RESET");
+    logxbee("CH;error,RESET!");
     digitalWrite(5, HIGH);   // turn the RESET on (HIGH is the voltage level)
     delay(500);              // wait for a 0.5 second
     digitalWrite(5, LOW);
@@ -194,18 +221,7 @@ void loop()
                             //Statement will repeat until serial connects
   } 
   
-
-
-  //Every minute, the payload should spin 360 degrees
-  if(timing >=0 && timing <=5){
-    stepper.moveTo(stepper.currentPosition() - 200);
-      stepper.runToPosition();
-    }
-  
-
-    
-     
-      
+ 
   
 }
 
@@ -216,89 +232,52 @@ void serialFlush()
     char t = Serial1.read();
   }
 }
-void serialBFlush(){
-  while(Serial.available() > 0) {
-    char t = Serial.read();
-  }
-}
+
+
+
 void xBeeCommand(){
-  if (Serial.available()){
-
-    //  Grab transmission and parse command  //
-    int len, num;
-    String transmission, id, command;
-    transmission = Serial.readStringUntil('!');
-    len = transmission.length();
-
-    num = transmission.indexOf('?');
-    id = transmission.substring(0, num);
-    command = transmission.substring(num + 1, len);
-
-    //  Verify id and perform valid command //
- 
-
-     if (id == "CH") {
-
-     // if(command = lastcommand && (millis() - commandtime < 5000)) return;
-      
-       //  lastcommand = command;
-         //commandtime = millis();
-      
-      
-   if (command == "RZ") {
-    sendToXbee("RZ RECEIVED");
+  String command = xbee.receive();
+  if (command == "RZ") {
     rotSpeedScale =0;
       } 
   if (command == "RS") {
-    sendToXbee("RS RECEIVED");
+    xbee.send("RS RECEIVED");
     digitalWrite(5, HIGH);   // turn the RESET on (HIGH is the voltage level)
     delay(500);              // wait for a 0.5 second
     digitalWrite(5, LOW);
     
       }
   if(command == "DIE"){   //And now, the end is near
-    sendToXbee("why...");       //and so I face the final curtain
+    xbee.send("why...");       //and so I face the final curtain
     digitalWrite(6,HIGH); //My friend, I'll say it clear
     delay(1000);          //wait for a 1 second
     digitalWrite(6, LOW); //I'll state my case, of which I'm certain
   }
   if(command == "SP"){
-    sendToXbee("SP RECIVED");
     spin = true;
   }
   if (command == "TL") {
-    sendToXbee("TL RECEIVED");
     offset +=10;
       } 
   if (command == "TR") {
-    sendToXbee("TR RECEIVED");
     offset -=10;
       }
   if (command == "TLL") {
-    sendToXbee("TLL RECEIVED");
     offset +=50;
       } 
   if (command == "TRR") {
-    sendToXbee("TRR RECEIVED");
     offset -=50;
       }
   if(command == "OF"){
     String mystring = String(offset);
-    sendToXbee(mystring);
+    xbee.send(mystring);
       }
-    }
-
-  serialBFlush();
-
-}
-
+    if(command != ""){
+    logxbee("CH;"+command + "!");}
 }
 
 
-void sendToXbee(String msg){
-  Serial.println("CH;"+msg + "!");
-  logxbee("CH;"+msg + "!");
-}
+
 
 void updateGPS(){
 
