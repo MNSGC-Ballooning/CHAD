@@ -9,17 +9,12 @@
 #include <AccelStepper.h>
 #include <Wire.h>
 #include <Adafruit_MotorShield.h>
-#include "utility/Adafruit_MS_PWMServoDriver.h"
-#include <SPI.h>
 #include <SD.h>
 #include <Adafruit_GPS.h>
 #include <Relay_XBee.h>
 
-
-//
-// NEW XBEE STUFF
-//
-XBee xbee= XBee(&Serial, "CH");
+//XBEE STUFF
+XBee xbee = XBee(&Serial, "CH");
 
 Adafruit_GPS GPS(&Serial2); //Constructor for GPS object
 File compassfile;
@@ -54,14 +49,12 @@ const float DegToSteps = 0.555556;  //Degree to Motor steps conversion
                                      //Found by (#steps/360deg)
 int startingPosition;
 int offset = 0;
-bool spin = false;        //Rotation tests
 long curPos;
 int amtMove;                  //Number of steps motor should move
 
 bool blinkState = false;      //Used to verify program active
 
-String lastcommand = "" ; //Used to keep track of commands, to avoid repeats
-unsigned long commandtime = 0;
+unsigned long updateTime = 0;
 unsigned long timer = 0;
 unsigned long turner = 0;
 
@@ -74,12 +67,9 @@ void setup()
   AFMStop.begin();                // Start the top shield
 
   Serial1.begin(38400);         // Ard-to-Ard serial rate
-//
-// NEW XBEE STUFF
-//
-  xbee.begin(9600);
-  //Serial.begin(9600);           // XBee serial rate
-  // AHRS uses 38400 baud
+
+//XBEE STUFF
+  xbee.begin(9600);             // XBee serial rate
 
 //Set up GPS stuff
   GPS.begin(9600);
@@ -111,43 +101,36 @@ void loop()
     { 
       // Read serial data from AHRS
       rotSpeed_str = Serial1.readStringUntil(',');
-      commandtime = millis();
-      Serial.println(commandtime);
+      updateTime = millis();
+      Serial.println(updateTime);
      
       rotSpeed = rotSpeed_str.toInt();
       gammaPos = -Serial1.parseFloat(); 
 
      
       if(millis() - timer > 10000){
+        timer = millis();
         compassfile = SD.open("test.txt", FILE_WRITE);
-
-       if(compassfile){
-         compassfile.print(flightTimeStr());
-        compassfile.print("rotspeed: "); 
-        compassfile.print(rotSpeed_str); 
-        compassfile.print("  gammaPos: "); 
-        compassfile.println(gammaPos);
-        compassfile.close();
+        if(compassfile){
+          compassfile.print(flightTimeStr());
+          compassfile.print("rotspeed: "); 
+          compassfile.print(rotSpeed_str); 
+          compassfile.print("  gammaPos: "); 
+          compassfile.println(gammaPos);
+          compassfile.close();
+        }
       }
-      timer = millis();}
        
       gammaPosSteps = gammaPos * DegToSteps;  //Convert to steps
       curPos = stepper.currentPosition() - startingPosition;  //Get current position
       amtMove = -gammaPosSteps - (curPos % 200) + rotSpeed*rotSpeedScale;// + offset; //Calculate ammount moved
-
-      if(spin){
-        stepper.moveTo(stepper.currentPosition() + 200);
-        stepper.runToPosition();
-        spin = false;
-      }
-                        
+      
       //if the amount to move is less than -180deg, that is it will rotate more than half way
       if (amtMove < -100) { amtMove+=200; }
       //if the amount to move is greater than 180deg, that is it will rotate more than half way
       if (amtMove >= 100) { amtMove-=200; }
       amtMove = amtMove % 200;
 
-      
       stepper.move(amtMove);  //Set amount to move  
       stepper.run();          //Move
       serialFlush();          //Clear serial memory
@@ -156,13 +139,8 @@ void loop()
       blinkState = !blinkState; 
       digitalWrite(13, blinkState); 
      
-
       stepper.run();          //Move
     } 
-
-
-
-   
 
   //Every minute, the payload should spin 360 degrees
   if(millis() - turner > 600000){
@@ -171,17 +149,10 @@ void loop()
       turner = millis();
     }
 
-  
-  xBeeCommand();                              //  respond to XBee commands if any
+  xBeeCommand();  //respond to XBee commands if any
   stepper.run();  //Move
-
-
   updateGPS();
- 
-  
-  
-  
-  if( millis() -commandtime > 10000)
+  if( millis() - updateTime > 10000)
   {
     logxbee("CH;error,RESET!");
     digitalWrite(5, HIGH);   // turn the RESET on (HIGH is the voltage level)
@@ -189,139 +160,5 @@ void loop()
     digitalWrite(5, LOW);
     delay(2000);            // wait 2 sec for system to start back up
                             //Statement will repeat until serial connects
-  } 
-  
- 
-  
-}
-
-
-void serialFlush()
-{
-  while (Serial1.available() > 0) {
-    char t = Serial1.read();
   }
 }
-
-
-
-void xBeeCommand(){
-  String command = xbee.receive();
-  if (command == "RZ") {
-    rotSpeedScale =0;
-      } 
-  if (command == "RS") {
-    xbee.send("RS RECEIVED");
-    digitalWrite(5, HIGH);   // turn the RESET on (HIGH is the voltage level)
-    delay(500);              // wait for a 0.5 second
-    digitalWrite(5, LOW);
-    
-      }
-  if(command == "DIE"){   //And now, the end is near
-    xbee.send("why...");       //and so I face the final curtain
-    digitalWrite(6,HIGH); //My friend, I'll say it clear
-    delay(1000);          //wait for a 1 second
-    digitalWrite(6, LOW); //I'll state my case, of which I'm certain
-  }
-  if(command == "SP"){
-    spin = true;
-  }
-  if (command == "TL") {
-    offset +=10;
-      } 
-  if (command == "TR") {
-    offset -=10;
-      }
-  if (command == "TLL") {
-    offset +=50;
-      } 
-  if (command == "TRR") {
-    offset -=50;
-      }
-  if(command == "OF"){
-    String mystring = String(offset);
-    xbee.send(mystring);
-      }
-    if(command != ""){
-    logxbee("CH;"+command + "!");}
-}
-
-
-
-
-void updateGPS(){
-
-  
-  while (Serial2.available() > 0) {
-    GPS.read();
-  }
-
-
-  
-    if (GPS.newNMEAreceived()) {
-    int lastTime = getGPStime();
-    GPS.parse(GPS.lastNMEA());
-   
-    
-    if (getGPStime() > lastTime) {
-      gpsfile = SD.open("gpsstuff.txt", FILE_WRITE);
-
-      String data = "";
-      if (GPS.fix) {
-        data += (flightTimeStr() + "," + String(GPS.latitudeDegrees) + "," + String(GPS.longitudeDegrees) + ",");
-        data += (String(GPS.altitude * 3.28048) + ",");    //convert meters to feet for datalogging
-        data += (String(GPS.month) + "/" + String(GPS.day) + "/" + String(GPS.year) + ",");
-        data += (String(GPS.hour) + ":" + String(GPS.minute) + ":" + String(GPS.seconds) + ",");
-      }
-      else
-        data += (flightTimeStr() + ",No fix");
-     
-      
-      gpsfile.println(data);
-      gpsfile.close();
-  
-    }
-  }
-
-
-
-}
-
-
-
-int getGPStime() {    //returns GPS time as seconds since 0:00:00 UTC. Note that comparisons crossing that time will be inaccurate
-  return GPS.hour * 3600 + GPS.minute * 60 + GPS.seconds;
-}
-
-//returns milliseconds since last flight start command (or bootup)
-unsigned long flightTime() {
-  return (millis() - flightStart);
-}
-
-//returns the above flight time as a usable string for print statements
-String flightTimeStr() {
-  unsigned long t = flightTime() / 1000;
-  String fTime = "";
-  fTime += (String(t / 3600) + ":");
-  t %= 3600;
-  fTime += String(t / 600);
-  t %= 600;
-  fTime += (String(t / 60) + ":");
-  t %= 60;
-  fTime += (String(t / 10) + String(t % 10));
-  return fTime;
-}
-
-
-void logxbee(String msg){
-      Xbeelog = SD.open("xbee.txt", FILE_WRITE);
-
-      if(Xbeelog){
-      Xbeelog.print(flightTimeStr());
-      Xbeelog.print("\t");
-      Xbeelog.println(msg);
-      Xbeelog.close();
-      }
-  
-  }
-
