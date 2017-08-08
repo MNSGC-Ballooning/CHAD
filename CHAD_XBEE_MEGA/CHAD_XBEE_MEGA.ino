@@ -13,6 +13,11 @@
 #include <Adafruit_GPS.h>
 #include <Relay_XBee.h>
 
+#define encoderPinA 2
+#define encoderPinB 3
+
+volatile int encoderPos = 0;
+
 //XBEE STUFF
 XBee xbee = XBee(&Serial, "CH");
 
@@ -60,6 +65,8 @@ unsigned long turner = 0;
 
 void setup()
 {
+  pinMode(encoderPinA, INPUT);
+  pinMode(encoderPinB, INPUT);
   pinMode(led, OUTPUT);
   pinMode(5, OUTPUT);           // set-up for RESET pin
   pinMode(6, OUTPUT);           // set-up for MEGA RESET pin
@@ -83,6 +90,10 @@ void setup()
   heading = 0 * DegToSteps;       // In units of motor steps
                                   // if it does not begin with gamma at 0
   startingPosition = (Serial1.parseFloat() * DegToSteps);
+
+  //enable encoder interrupts
+  attachInterrupt(digitalPinToInterrupt(encoderPinA), ISR_encoderA, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(encoderPinB), ISR_encoderB, CHANGE);
   
   while (!Serial){;}      //  wait for serial port to connect
 
@@ -112,6 +123,13 @@ void loop()
         timer = millis();
         compassfile = SD.open("test.txt", FILE_WRITE);
         if(compassfile){
+          int encoder;
+          noInterrupts();
+          encoder = encoderPos;
+          interrupts();
+          compassfile.print(encoder);
+          compassfile.print("stepper");
+          compassfile.print(stepper.currentPosition());
           compassfile.print(flightTimeStr());
           compassfile.print("rotspeed: "); 
           compassfile.print(rotSpeed_str); 
@@ -152,6 +170,7 @@ void loop()
   xBeeCommand();  //respond to XBee commands if any
   stepper.run();  //Move
   updateGPS();
+  
   if( millis() - updateTime > 10000)
   {
     logxbee("CH;error,RESET!");

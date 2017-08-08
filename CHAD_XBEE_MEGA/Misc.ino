@@ -51,3 +51,36 @@ String flightTimeStr() {
   fTime += (String(t / 10) + String(t % 10));
   return fTime;
 }
+
+void ISR_encoderA() {
+  if (digitalRead(encoderPinA) == HIGH) {
+    if (digitalRead(encoderPinB) == LOW)
+      encoderPos++; //CW
+    else
+      encoderPos--; //CCW
+  }
+
+  else {
+    if (digitalRead(encoderPinB) == HIGH)
+      encoderPos++; //CW
+    else
+      encoderPos--; //CCW
+  }
+}
+
+void ISR_encoderB() {
+  if (digitalRead(encoderPinB) == HIGH) {
+    if (digitalRead(encoderPinA) == HIGH)
+      encoderPos++; //CW
+    else
+      encoderPos--; //CCW
+  }
+
+  else {
+    if (digitalRead(encoderPinA) == LOW)
+      encoderPos++; //CW
+    else
+      encoderPos--; //CCW
+  }
+}
+
