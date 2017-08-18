@@ -113,7 +113,6 @@ void loop()
       // Read serial data from AHRS
       rotSpeed_str = Serial1.readStringUntil(',');
       updateTime = millis();
-      Serial.println(updateTime);
      
       rotSpeed = rotSpeed_str.toInt();
       gammaPos = -Serial1.parseFloat(); 
